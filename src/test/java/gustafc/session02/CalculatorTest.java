@@ -40,6 +40,11 @@ public class CalculatorTest {
     }
 
     @Test
+    public void shouldDivideByZero() {
+        assertThat(calculatorWithInput("a:1", "b:0", "=a/b"), emitsValues("a/b=Infinity"));
+    }
+
+    @Test
     public void shouldShowUnknownValues() {
         assertThat(calculatorWithInput("=a+b", "a:1", "c:3", "b:1"), emitsValues("a+b=?+?", "a+b=1.0+?", "a+b=2.0"));
     }
