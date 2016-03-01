@@ -1,4 +1,4 @@
-package gustafc.session02;
+package gustafc.ch02;
 
 import org.junit.Test;
 import rx.Observable;
