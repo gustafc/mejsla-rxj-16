@@ -11,6 +11,11 @@ import java.util.concurrent.ExecutionException;
 
 public class ObservableMatchers {
 
+
+    public static <T> Matcher<Observable<? extends T>> emitsNothing() {
+        return emitsValues();
+    }
+
     public static <T> Matcher<Observable<? extends T>> emitsValues(T... values) {
         return new BaseMatcher<Observable<? extends T>>() {
             List<T> items;
