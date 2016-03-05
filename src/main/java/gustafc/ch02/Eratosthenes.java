@@ -1,5 +1,8 @@
 package gustafc.ch02;
 
+import fj.Ord;
+import fj.data.Set;
+import fj.data.Stream;
 import rx.Observable;
 
 import java.util.Collection;
@@ -9,35 +12,20 @@ public class Eratosthenes {
 
     public static final int LAST_SIGNED_32_BIT_PRIME = 2147483647;
 
-    static class Sifter {
-
-        private final Sifter previous;
-        private final int prime;
-
-        Sifter(Sifter previous, int n) {
-            this.previous = previous;
-            this.prime = n;
-        }
-
-        Sifter next() {
-            int candidate = prime;
-            while (!isPrime(++candidate))
-                ;
-            return new Sifter(this, candidate);
-        }
-
-        private boolean isPrime(int candidate) {
-            for (Sifter current = this; current != null; current = current.previous) {
-                if (candidate % current.prime == 0) return false;
-            }
-            return true;
-        }
+    private static Set<Integer> nextPrimeSet(Set<Integer> seen) {
+        int greatestSeen = seen.max().some();
+        return Stream.range(greatestSeen + 1, 1L + Integer.MAX_VALUE).filter(candidate -> {
+            int max = (int) Math.ceil(Math.sqrt(greatestSeen));
+            return seen.toStream()
+                    .takeWhile(prime -> prime <= max)
+                    .forall(prime -> candidate % prime != 0);
+        }).map(seen::insert).head();
     }
 
     public static Observable<Integer> primes() {
         return Observable.just("whatever").repeat()
-                .scan(new Sifter(null, 2), (sifter, ignore) -> sifter.next())
-                .map(sifter -> sifter.prime)
+                .scan(Set.set(Ord.intOrd, 2), (primes, ignore) -> nextPrimeSet(primes))
+                .map(primes -> primes.max().some())
                 .takeUntil(n -> n == LAST_SIGNED_32_BIT_PRIME);
     }
 
