@@ -17,24 +17,26 @@ public class ObservableMatchers {
     }
 
     @SafeVarargs
-    public static <T> Matcher<Observable<? extends T>> emitsValues(T... values) {
+    public static <T> Matcher<Observable<? extends T>> emitsValues(T... expected) {
         return new BaseMatcher<Observable<? extends T>>() {
-            List<T> items;
+            List<T> actual;
 
             @Override
             public boolean matches(Object item) {
-                items = valuesIn((Observable<T>) item, values.length + 1);
-                return Arrays.equals(values, items.toArray(new Object[0]));
+                actual = valuesIn((Observable<T>) item, expected.length + 1);
+                return Arrays.equals(expected, actual.toArray(new Object[0]));
             }
 
             @Override
             public void describeMismatch(Object item, Description description) {
-                description.appendText(values.length == items.size()? "was " : "was (too long) ").appendValue(items);
+                String label = expected.length == actual.size()? "was " :
+                        "was (too " + (expected.length > actual.size() ? "short" : "long") + ")";
+                description.appendText(label + " ").appendValue(actual);
             }
 
             @Override
             public void describeTo(Description description) {
-                description.appendValueList("An observable emitting: [", ", ", "]", Arrays.asList(values));
+                description.appendValueList("An observable emitting: [", ", ", "]", Arrays.asList(expected));
             }
 
         };
