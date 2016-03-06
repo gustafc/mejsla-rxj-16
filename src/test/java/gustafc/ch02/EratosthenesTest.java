@@ -1,6 +1,7 @@
 package gustafc.ch02;
 
 import org.hamcrest.Matcher;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import rx.Observable;
 
@@ -21,7 +22,7 @@ public class EratosthenesTest {
 
     @Test
     public void testKalle() {
-        assertThat(Eratosthenes.kalle(97), emits25FirstPrimes());
+        assertThat(Eratosthenes.kalle(100), emits25FirstPrimes());
     }
 
     private Matcher<Observable<? extends Integer>> emits25FirstPrimes() {

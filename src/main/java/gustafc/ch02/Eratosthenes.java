@@ -32,14 +32,18 @@ public class Eratosthenes {
     public static Observable<Integer> nonFp() {
         Collection<Integer> primes = new HashSet<>();
         return Observable.just(1).repeat().scan(2, (a, b) -> a + b).filter(integer -> {
-            boolean isPrime = isPrime(integer, primes);
+            boolean isPrime = nonFpIsPrime(integer, primes);
             if (isPrime) primes.add(integer);
             return isPrime;
         });
     }
 
+    private static boolean nonFpIsPrime(Integer integer, Collection<Integer> primes) {
+        return !primes.stream().anyMatch(prime -> integer % prime == 0);
+    }
+
     public static Observable<Integer> kalle(int to) {
-        return kalleSieve(Observable.range(2, to), (int) Math.sqrt(to));
+        return kalleSieve(Observable.range(2, to - 1), (int) Math.sqrt(to));
     }
 
 
@@ -48,10 +52,6 @@ public class Eratosthenes {
         final int head = s.toBlocking().first();
         final Observable<Integer> tail = s.skip(1).filter(i -> i % head != 0);
         return kalleSieve(tail, levels - 1).startWith(head);
-    }
-
-    private static boolean isPrime(Integer integer, Collection<Integer> primes) {
-        return !primes.stream().anyMatch(prime -> integer % prime == 0);
     }
 
 
