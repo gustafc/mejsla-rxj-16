@@ -16,6 +16,7 @@ public class ObservableMatchers {
         return emitsValues();
     }
 
+    @SafeVarargs
     public static <T> Matcher<Observable<? extends T>> emitsValues(T... values) {
         return new BaseMatcher<Observable<? extends T>>() {
             List<T> items;
@@ -28,14 +29,13 @@ public class ObservableMatchers {
 
             @Override
             public void describeMismatch(Object item, Description description) {
-                description.appendText("was ").appendValue(items);
+                description.appendText(values.length == items.size()? "was " : "was (too long) ").appendValue(items);
             }
 
             @Override
             public void describeTo(Description description) {
                 description.appendValueList("An observable emitting: [", ", ", "]", Arrays.asList(values));
             }
-
 
         };
     }
