@@ -38,6 +38,18 @@ public class Eratosthenes {
         });
     }
 
+    public static Observable<Integer> kalle(int to) {
+        return kalleSieve(Observable.range(2, to), (int) Math.sqrt(to));
+    }
+
+
+    public static Observable<Integer> kalleSieve(Observable<Integer> s, int levels) {
+        if (levels <= 1) return s;
+        final int head = s.toBlocking().first();
+        final Observable<Integer> tail = s.skip(1).filter(i -> i % head != 0);
+        return kalleSieve(tail, levels - 1).startWith(head);
+    }
+
     private static boolean isPrime(Integer integer, Collection<Integer> primes) {
         return !primes.stream().anyMatch(prime -> integer % prime == 0);
     }
