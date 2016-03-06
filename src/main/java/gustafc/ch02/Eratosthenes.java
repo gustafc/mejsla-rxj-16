@@ -3,6 +3,8 @@ package gustafc.ch02;
 import fj.Ord;
 import fj.data.Set;
 import fj.data.Stream;
+import gustafc.util.Zip;
+import gustafc.util.Zip.Indexed;
 import rx.Observable;
 
 import java.util.Collection;
@@ -48,10 +50,10 @@ public class Eratosthenes {
 
 
     public static Observable<Integer> kalleSieve(Observable<Integer> s, int levels) {
-        if (levels <= 1) return s;
-        final int head = s.toBlocking().first();
-        final Observable<Integer> tail = s.skip(1).filter(i -> i % head != 0);
-        return kalleSieve(tail, levels - 1).startWith(head);
+        return levels <= 1 ? s : s.take(1).flatMap(head -> {
+            Observable<Integer> tail = s.skip(1).filter(i -> i % head != 0);
+            return kalleSieve(tail, levels - 1).startWith(head);
+        });
     }
 
 
