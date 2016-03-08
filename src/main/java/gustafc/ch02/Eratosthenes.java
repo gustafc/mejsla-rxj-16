@@ -17,12 +17,12 @@ public class Eratosthenes {
     public static Observable<Integer> primes() {
         return generate(Set.set(Ord.intOrd, 2), seen -> {
             int greatestSeen = seen.max().some();
-            return Stream.range(greatestSeen + 1, 1L + Integer.MAX_VALUE).filter(candidate -> {
-                int max = (int) Math.ceil(Math.sqrt(greatestSeen));
-                return seen.toStream()
-                        .takeWhile(prime -> prime <= max)
-                        .forall(prime -> candidate % prime != 0);
-            }).map(seen::insert).head();
+            int max = (int) Math.ceil(Math.sqrt(greatestSeen));
+            return Stream.range(greatestSeen + 1, 1L + Integer.MAX_VALUE).filter(
+                    candidate -> seen.toStream()
+                            .takeWhile(prime -> prime <= max)
+                            .forall(prime -> candidate % prime != 0)
+            ).map(seen::insert).head();
         }).map(primes -> primes.max().some()).takeUntil(n -> n == LAST_SIGNED_32_BIT_PRIME);
     }
 
