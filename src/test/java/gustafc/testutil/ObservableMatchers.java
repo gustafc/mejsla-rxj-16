@@ -82,7 +82,7 @@ public class ObservableMatchers {
 
             @Override
             public void describeTo(Description description) {
-                description.appendText("An observable failing with: " + exceptionClass.getCanonicalName());
+                description.appendText("An observable failing with " + exceptionClass.getName());
             }
 
         };
