@@ -43,5 +43,10 @@
       <artifactId>functionaljava-java8</artifactId>
       <version>4.5</version>
     </dependency>
+    <dependency>
+      <groupId>io.reactivex</groupId>
+      <artifactId>rxswing</artifactId>
+      <version>0.25.0</version>
+    </dependency>
   </dependencies>
 </project>
