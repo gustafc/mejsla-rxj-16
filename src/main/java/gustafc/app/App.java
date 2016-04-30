@@ -1,43 +1,56 @@
 package gustafc.app;
 
 import gustafc.util.Urls;
+import gustafc.util.Zip;
+import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClients;
+import org.apache.http.nio.client.HttpAsyncClient;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 import rx.Observable;
+import rx.apache.http.ObservableHttp;
+import rx.apache.http.ObservableHttpResponse;
 import rx.observables.SwingObservable;
+import rx.schedulers.SwingScheduler;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
 import java.net.URI;
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static gustafc.util.Cast.tryCast;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.stream.Collectors.toList;
 import static javax.swing.SwingUtilities.invokeLater;
 
 public class App extends JFrame {
 
-    private final SearchField searchField;
-    private final SearchResultsPanel searchResultsPanel;
-    private final ArticleDisplay articleDisplay;
-
     App() {
         super("WP Searcher");
+        CloseableHttpAsyncClient httpClient = HttpAsyncClients.createDefault();
+        httpClient.start();
         JPanel main = new JPanel(new BorderLayout()),
                 nav = new JPanel(new BorderLayout());
-        nav.setPreferredSize(new Dimension(400, 0));
-        nav.add(searchField = new SearchField(), BorderLayout.NORTH);
-        nav.add(searchResultsPanel = new SearchResultsPanel(searchField.searches), BorderLayout.CENTER);
+        nav.setPreferredSize(new Dimension(300, 0));
+        SearchField searchField = new SearchField();
+        nav.add(searchField, BorderLayout.NORTH);
+        SearchResultsPanel searchResultsPanel = new SearchResultsPanel(httpClient, searchField.searches);
+        nav.add(searchResultsPanel, BorderLayout.CENTER);
         main.add(nav, BorderLayout.WEST);
-        main.add(articleDisplay = new ArticleDisplay(searchResultsPanel.selectedArticles), BorderLayout.CENTER);
+        main.setPreferredSize(new Dimension(800, 800));
+        main.add(new ArticleDisplay(httpClient, searchResultsPanel.selectedArticles), BorderLayout.CENTER);
         setContentPane(main);
         pack();
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         invokeLater(() -> {
             App app = new App();
             app.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -96,11 +109,11 @@ class SearchResultsPanel extends JPanel {
 
     private final DefaultListModel<SearchResult> items;
 
-    public SearchResultsPanel(Observable<String> searchStrings) {
+    public SearchResultsPanel(HttpAsyncClient httpClient, Observable<String> searchStrings) {
         super(new BorderLayout());
         items = new DefaultListModel<>();
-        items.addElement(new SearchResult("Apelsin", URI.create("frukt:apelsin")));
-        items.addElement(new SearchResult("Banan", URI.create("frukt:banan")));
+        items.addElement(new SearchResult("Apelsin", URI.create("http://sv.wikpedia.org/wiki/Apelsin")));
+        items.addElement(new SearchResult("Banan", URI.create("http://sv.wikpedia.org/wiki/Banan")));
         JList<SearchResult> list = new JList<>(items);
         list.setCellRenderer(new DefaultListCellRenderer() {
             @Override
@@ -113,23 +126,28 @@ class SearchResultsPanel extends JPanel {
                 .map(s -> s.trim().replaceAll("\\s+", " "))
                 .debounce(200, MILLISECONDS)
                 .distinctUntilChanged()
-                .switchMap(this::doSearch)
-                // TODO: Kör på EDT
-                .subscribe(query -> SwingUtilities.invokeLater(() -> this.receiveSearchResult(query)));
+                .switchMap(query -> doSearch(query, httpClient))
+                .observeOn(SwingScheduler.getInstance())
+                .subscribe(this::receiveSearchResult);
         ListSelectionModel selectionModel = list.getSelectionModel();
         selectionModel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         selectedArticles = SwingObservable.fromListSelectionEvents(selectionModel)
-                // TODO: Kör på EDT
+                .observeOn(SwingScheduler.getInstance())
                 .map(evt -> list.getSelectedValue())
                 .filter(r -> r != null)
                 .map(r -> r.fullUri);
     }
 
-    private Observable<List<SearchResult>> doSearch(String query) {
+    private Observable<List<SearchResult>> doSearch(String query, HttpAsyncClient httpClient) {
         if (query.isEmpty()) return Observable.just(emptyList());
-        return Observable.just(Arrays.stream(query.split("\\s+"))
-                .map(q -> new SearchResult(q, URI.create("bogus:" + Urls.encode(q))))
-                .collect(toList()));
+        String url = "https://sv.wikipedia.org/w/api.php?action=query&list=search&srsearch="
+                + Urls.encode(query) + "&format=json&utf8=";
+        System.out.println("Load " + url);
+        return Http.get(httpClient, url).map(s -> {
+            System.out.println("Received " + s + " from " + url);
+            JSONObject jsonObject = new JSONObject(new JSONTokener(s));
+            return Collections.singletonList(new SearchResult(jsonObject.toString(), URI.create("about:blank")));
+        });
     }
 
     private void receiveSearchResult(List<SearchResult> searchResults) {
@@ -139,17 +157,20 @@ class SearchResultsPanel extends JPanel {
 }
 
 class ArticleDisplay extends JPanel {
-    public ArticleDisplay(Observable<URI> selectedArticles) {
+    private final CloseableHttpAsyncClient httpClient;
+
+    public ArticleDisplay(CloseableHttpAsyncClient httpClient, Observable<URI> selectedArticles) {
         super(new BorderLayout());
+        this.httpClient = httpClient;
         JEditorPane editorPane = new JEditorPane("text/html", "<html><h1>APELSIN<p>Apelsin är en smarrig frukt.");
         add(editorPane, BorderLayout.CENTER);
         selectedArticles
                 .switchMap(this::doLookup)
-                // TODO: Kör på EDT
+                .observeOn(SwingScheduler.getInstance())
                 .subscribe(editorPane::setText);
     }
 
     private Observable<String> doLookup(URI uri) {
-        return Observable.just(String.format("<html><h1>%s<p> TODO: Hämta %s", uri, uri));
+        return Http.get(httpClient, uri.toASCIIString());
     }
 }
