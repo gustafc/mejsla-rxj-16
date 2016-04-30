@@ -1,35 +1,51 @@
 package gustafc.util;
 
 import rx.Observable;
+import rx.Subscriber;
 
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class Zip {
 
     public static <T> Observable<Indexed<T>> withIndex(Observable<? extends T> values) {
-        return values.zipWith(cycleInts(), (v, i) -> new Indexed<>(i, v));
+        return values.lift(Zip.withIndex());
     }
 
-    private static Iterable<Integer> cycleInts() {
-        class CycledInts implements Iterator<Integer> {
-            private int current = 0;
+    public static <T> Observable.Operator<Indexed<T>, T> withIndex() {
+        AtomicLong counter = new AtomicLong(0);
+        return subscriber -> new Subscriber<T>() {
             @Override
-            public boolean hasNext() { return true; }
+            public void onCompleted() {
+                subscriber.onCompleted();
+            }
 
             @Override
-            public Integer next() { return current++; }
-        }
-        return CycledInts::new;
+            public void onError(Throwable e) {
+                subscriber.onError(e);
+            }
+
+            @Override
+            public void onNext(T t) {
+                subscriber.onNext(new Indexed<>(counter.getAndIncrement(), t));
+            }
+        };
     }
 
     public static final class Indexed<T> {
-        public final int index;
+        public final long index;
         public final T value;
 
-        public Indexed(int index, T value) {
+        public Indexed(long index, T value) {
             this.index = index;
             this.value = value;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(index, value);
         }
 
         @Override
