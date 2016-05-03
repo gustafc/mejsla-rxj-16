@@ -15,8 +15,9 @@ public class Zip {
     }
 
     public static <T> Observable.Operator<Indexed<T>, T> withIndex() {
-        AtomicLong counter = new AtomicLong(0);
-        return subscriber -> new Subscriber<T>() {
+        return subscriber -> new Subscriber<T>(subscriber) {
+            final AtomicLong counter = new AtomicLong(0);
+
             @Override
             public void onCompleted() {
                 subscriber.onCompleted();
